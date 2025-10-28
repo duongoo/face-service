@@ -18,7 +18,7 @@ const upload = multer({ storage });
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 
 const tinyFaceDetectorOptions = new faceapi.TinyFaceDetectorOptions({
-  inputSize: 512,
+  inputSize: 256,
   scoreThreshold: 0.5
 });
 const FACE_MATCH_THRESHOLD = 0.55;
@@ -143,10 +143,10 @@ app.get('/', (_req, res) => {
 app.post('/register', upload.single('imageFile'), async (req, res) => {
   console.log('Có yêu cầu đăng ký mới...');
   try {
-    const { customerName } = req.body;
+    const { name } = req.body;
     const imageBuffer = req.file?.buffer;
 
-    if (!customerName || !imageBuffer) {
+    if (!name || !imageBuffer) {
       return res.status(400).json({ message: 'Thiếu tên hoặc ảnh!' });
     }
     // 1. Load ảnh từ buffer vào canvas
@@ -168,7 +168,7 @@ app.post('/register', upload.single('imageFile'), async (req, res) => {
 
     // 3. Tạo một entry mới cho khách hàng
     const newCustomer = {
-      name: customerName,
+      name: name,
       // Chuyển Float32Array thành mảng thường để lưu vào DB (JSON)
       descriptor: Array.from(detection.descriptor) 
     };
@@ -177,14 +177,14 @@ app.post('/register', upload.single('imageFile'), async (req, res) => {
     // let customerDatabase = readDatabase();
     // customerDatabase.push(newCustomer);
     // writeDatabase(customerDatabase);
-    await writeCustomerToDb(customerName, Array.from(detection.descriptor) );
+    await writeCustomerToDb(name, Array.from(detection.descriptor) );
     const customers = await readCustomersFromDb();
-    console.log(`Đã đăng ký và LƯU VÀO FILE cho: ${customerName}. Tổng số khách hàng: ${customers.length}`);
+    console.log(`Đã đăng ký và LƯU VÀO FILE cho: ${name}. Tổng số khách hàng: ${customers.length}`);
     
     // 5. Trả về kết quả thành công
     res.status(201).json({
-      message: `Đăng ký thành công cho khách hàng "${customerName}"! ✨`,
-      customer: newCustomer, // Trả về để client xem nếu cần
+      message: `Đăng ký thành công cho khách hàng "${name}"! ✨`,
+      customer: name, // Trả về để client xem nếu cần
     });
     
   } catch (error) {
