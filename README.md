@@ -244,5 +244,8 @@ curl -X POST http://localhost:3000/checkin \
 ## License
 MIT
 
-## Tác giả
-Face Recognition API v2.0
+## Tác giả & Liên hệ
+Dự án được phát triển và duy trì bởi **Phước Dưỡng IT**  
+Email: [phuocduong.it@gmail.com](mailto:phuocduong.it@gmail.com)
+
+Vui lòng liên hệ qua email để trao đổi, góp ý hoặc hợp tác phát triển dự án.
