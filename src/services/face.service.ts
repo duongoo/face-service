@@ -1,3 +1,92 @@
+/**
+ * @packageDocumentation
+ * Dịch vụ nhận diện khuôn mặt sử dụng face-api.js kết hợp node-canvas trong môi trường Node.js.
+ *
+ * - Monkey patch face-api.js với Canvas, Image, ImageData từ thư viện `canvas` để chạy ngoài trình duyệt.
+ * - Tải mô hình từ thư mục cấu hình `config.face.modelPath`.
+ * - Cấu hình bộ dò TinyFaceDetector từ `config.face.detectorOptions`.
+ * - Cung cấp hai năng lực chính: phát hiện (detect) và so khớp (match) khuôn mặt.
+ *
+ * Luồng xử lý khuyến nghị:
+ * 1) Gọi `loadModels()` một lần khi dịch vụ khởi động (idempotent).
+ * 2) Với mỗi ảnh đầu vào, gọi `detectFace(buffer)` để lấy descriptor và độ tự tin.
+ * 3) Gọi `matchFace(descriptor, customers)` để so khớp với cơ sở dữ liệu khách hàng.
+ */
+
+/**
+ * Dịch vụ xử lý và nhận diện khuôn mặt.
+ *
+ * @remarks
+ * - Khởi tạo tuỳ chọn TinyFaceDetector từ `config.face.detectorOptions` (hỗ trợ cả cấu trúc mảng và đối tượng).
+ * - Quản lý trạng thái đã tải mô hình nhằm tránh tải lại nhiều lần.
+ *
+ * @example
+ * // Khởi động dịch vụ và tải mô hình
+ * const service = new FaceService();
+ * await service.loadModels();
+ *
+ * // Phát hiện khuôn mặt từ ảnh (Buffer)
+ * const { descriptor, confidence } = await service.detectFace(imageBuffer);
+ *
+ * // So khớp với danh sách khách hàng đã lưu descriptor
+ * const result = await service.matchFace(descriptor, customers);
+ * console.log(result.customer.name, result.distance);
+ */
+
+/**
+ * Tải các mô hình nhận diện khuôn mặt từ đĩa.
+ *
+ * @remarks
+ * - Hàm an toàn gọi lặp (idempotent): nếu mô hình đã tải, sẽ thoát ngay.
+ * - Tải lần lượt: TinyFaceDetector, FaceLandmark68, FaceRecognition.
+ *
+ * @returns Promise hoàn tất khi toàn bộ mô hình được tải.
+ *
+ * @throws Error Nếu quá trình tải mô hình từ đĩa thất bại.
+ */
+ 
+/**
+ * Phát hiện khuôn mặt và trích xuất đặc trưng (descriptor) từ ảnh.
+ *
+ * @param imageBuffer Buffer chứa dữ liệu ảnh đầu vào (ví dụ: JPEG/PNG).
+ *
+ * @returns
+ * Đối tượng gồm:
+ * - `descriptor`: véc-tơ đặc trưng khuôn mặt (Float32Array) phục vụ so khớp.
+ * - `confidence`: điểm tin cậy của phát hiện (0..1).
+ *
+ * @remarks
+ * - Sử dụng `TinyFaceDetector` kết hợp landmark và recognition head để sinh descriptor.
+ * - Yêu cầu `loadModels()` được gọi thành công trước đó.
+ *
+ * @throws Error
+ * - Nếu mô hình chưa được tải.
+ * - Nếu không phát hiện được khuôn mặt trong ảnh.
+ * - Nếu có lỗi nội bộ khi đọc ảnh hoặc suy luận.
+ */
+ 
+/**
+ * So khớp một descriptor với danh sách khách hàng.
+ *
+ * @param descriptor Descriptor khuôn mặt cần so khớp (Float32Array).
+ * @param customers Danh sách khách hàng, mỗi khách hàng có thể chứa nhiều descriptor đã lưu.
+ *
+ * @returns
+ * Kết quả so khớp:
+ * - `customer`: khách hàng được nhận diện.
+ * - `distance`: khoảng cách đặc trưng (càng nhỏ càng giống).
+ *
+ * @remarks
+ * - Lọc bỏ khách hàng không có descriptor hợp lệ.
+ * - Dùng `FaceMatcher` của face-api với ngưỡng `config.face.matchThreshold`.
+ * - So khớp theo nhãn (name) tương ứng với `LabeledFaceDescriptors`.
+ *
+ * @throws Error
+ * - Nếu mô hình chưa được tải.
+ * - Nếu không có khách hàng hợp lệ trong cơ sở dữ liệu.
+ * - Nếu không nhận diện được khách hàng (kết quả "unknown").
+ * - Nếu không tìm thấy khách hàng tương ứng với nhãn trả về.
+ */
 import * as faceapi from 'face-api.js';
 import { Canvas, Image, ImageData, loadImage } from 'canvas';
 import { config } from '../config';
@@ -6,10 +95,6 @@ import { Customer, FaceDetection, MatchResult } from '../types';
 // Patch face-api.js to use node-canvas
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 
-
-/**
- * Dịch vụ nhận diện khuôn mặt
- */
 export class FaceService {
   private modelsLoaded = false;
   private detectorOptions: faceapi.TinyFaceDetectorOptions;

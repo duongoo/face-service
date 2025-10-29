@@ -1,6 +1,78 @@
+/**
+ * DatabaseService - Dịch vụ quản lý kết nối và thao tác với SQL Server database
+ * 
+ * @description
+ * Service này xử lý các thao tác liên quan đến database cho hệ thống nhận diện khuôn mặt:
+ * - Quản lý kết nối đến SQL Server
+ * - Lưu trữ và truy xuất thông tin khách hàng (Customer)
+ * - Quản lý face descriptors (vector đặc trưng khuôn mặt)
+ * - Tự động giới hạn số lượng descriptors cho mỗi khách hàng (tối đa 5)
+ * 
+ * @remarks
+ * Luồng xử lý chính:
+ * 1. Khởi tạo kết nối database qua `connect()`
+ * 2. Lấy danh sách khách hàng qua `getAllCustomers()`
+ * 3. Lưu/cập nhật thông tin khách hàng qua `saveCustomer()`
+ * 4. Đóng kết nối khi không sử dụng qua `close()`
+ * 
+ * @example
+ * ```typescript
+ * const dbService = new DatabaseService();
+ * await dbService.connect();
+ * await dbService.saveCustomer("John Doe", [0.1, 0.2, ...]);
+ * const customers = await dbService.getAllCustomers();
+ * await dbService.close();
+ * ```
+ */
+
+/**
+ * Thiết lập kết nối đến SQL Server database
+ * @throws {Error} Nếu kết nối thất bại
+ */
+
+/**
+ * Lấy danh sách tất cả khách hàng từ database
+ * @returns {Promise<Customer[]>} Mảng các đối tượng Customer chứa tên và descriptors
+ * @throws {Error} Nếu database chưa được kết nối
+ */
+
+/**
+ * Lưu hoặc cập nhật thông tin khách hàng và face descriptor
+ * 
+ * @param {string} name - Tên khách hàng
+ * @param {number[]} descriptor - Mảng số (vector) đại diện cho đặc trưng khuôn mặt
+ * 
+ * @description
+ * - Nếu khách hàng đã tồn tại: thêm descriptor mới vào danh sách
+ * - Nếu khách hàng chưa tồn tại: tạo mới record
+ * - Tự động giới hạn tối đa 5 descriptors gần nhất cho mỗi khách hàng
+ * 
+ * @throws {Error} Nếu database chưa được kết nối
+ */
+
+/**
+ * Parse và chuyển đổi descriptor từ database thành mảng 2 chiều
+ * 
+ * @param {any} raw - Dữ liệu thô từ database (JSON string hoặc array)
+ * @returns {number[][]} Mảng 2 chiều các descriptors
+ * 
+ * @private
+ * @description
+ * Xử lý 3 trường hợp:
+ * - Nếu đã là array: trả về trực tiếp
+ * - Nếu là JSON string chứa 1 descriptor: wrap thành mảng 2 chiều
+ * - Nếu là JSON string chứa nhiều descriptors: parse và trả về
+ * - Nếu parse thất bại: trả về mảng rỗng
+ */
+
+/**
+ * Đóng kết nối database
+ * @description Giải phóng tài nguyên và đóng connection pool
+ */
 import mssql from 'mssql';
 import { config } from '../config';
 import { Customer } from '../types';
+
 
 export class DatabaseService {
   private pool: mssql.ConnectionPool | null = null;

@@ -1,9 +1,28 @@
+
 import { FastifyPluginAsync } from 'fastify';
 import { DatabaseService } from '../services/database.service';
 import { FaceService } from '../services/face.service';
 import { CacheService } from '../services/cache.service';
 import { registerSchema, getCustomersSchema } from '../schemas/customer.schema';
 
+/**
+ * Định nghĩa các route liên quan đến khách hàng cho Fastify.
+ *
+ * @param fastify - Instance của Fastify, đã được inject các service cần thiết.
+ *
+ * Các route bao gồm:
+ * - POST `/register`: Đăng ký khách hàng mới bằng cách upload ảnh và tên. Ảnh sẽ được kiểm tra khuôn mặt, lưu descriptor vào database, và làm mới cache.
+ * - GET `/customers`: Lấy danh sách tất cả khách hàng từ cache.
+ *
+ * Sử dụng các service:
+ * - DatabaseService: Lưu thông tin khách hàng.
+ * - FaceService: Phát hiện khuôn mặt và trích xuất descriptor từ ảnh.
+ * - CacheService: Lưu và làm mới cache danh sách khách hàng.
+ *
+ * Schema xác thực:
+ * - registerSchema: Xác thực dữ liệu đầu vào cho đăng ký khách hàng.
+ * - getCustomersSchema: Xác thực cho lấy danh sách khách hàng.
+ */
 export const customerRoutes: FastifyPluginAsync = async (fastify) => {
   const dbService: DatabaseService = fastify.dbService;
   const faceService: FaceService = fastify.faceService;
