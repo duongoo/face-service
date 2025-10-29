@@ -71,6 +71,7 @@
  */
 import mssql from 'mssql';
 import { config } from '../config';
+import path = require('path');
 import { Customer } from '../types';
 
 

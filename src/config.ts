@@ -1,14 +1,16 @@
+import 'dotenv/config';
+
 export const config = {
   // App
   port: Number(process.env.PORT) || 3000,
-  corsOrigin: 'http://localhost:4200',
+  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:4200',
   
   // Database
   database: {
-    user: 'emr',
-    password: 'Simmed@!@#$',
-    server: '192.168.20.100',
-    database: 'deepface',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    server: process.env.DB_SERVER || '192.168.20.100',
+    database: process.env.DB_DATABASE || 'deepface',
     pool: {
       max: 10,
       min: 2,
@@ -23,16 +25,16 @@ export const config = {
   
   // Face recognition
   face: {
-    modelPath: './models',
-    matchThreshold: 0.55,
+modelPath: './storage/models',
+    matchThreshold: Number(process.env.FACE_MATCH_THRESHOLD) || 0.55,
     detectorOptions: {
-      inputSize: 256,
-      scoreThreshold: 0.5
+      inputSize: Number(process.env.FACE_DETECTOR_INPUT_SIZE) || 256,
+      scoreThreshold: Number(process.env.FACE_DETECTOR_SCORE_THRESHOLD) || 0.5
     }
   },
   
   // Cache
   cache: {
-    ttl: 5 * 60 * 1000 // 5 phút
+    ttl: Number(process.env.CACHE_TTL) || 5 * 60 * 1000 // 5 phút
   }
 };

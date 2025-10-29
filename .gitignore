@@ -1,4 +1,12 @@
-
+# Dependencies
 node_modules/
 
+# Environment variables (chứa thông tin nhạy cảm)
+.env
+
+# Storage (runtime data)
+storage/
 avatart/
+
+# Ignore models folder
+storage/models/
