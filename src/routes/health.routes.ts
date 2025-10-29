@@ -8,7 +8,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
     return {
       status: 'ok',
-      message: 'Face Recognition API - Ready ✓',
+      message: 'API nhận dạng khuôn mặt - Sẵn sàng ✓',
       timestamp: new Date().toISOString()
     };
   });

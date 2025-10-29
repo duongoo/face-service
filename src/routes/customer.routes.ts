@@ -88,7 +88,7 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (error) {
       fastify.log.error(error);
       
-      return reply.code(200).send({
+      return reply.code(500).send({
         message: 'Không thể lấy danh sách khách hàng'
       });
     }

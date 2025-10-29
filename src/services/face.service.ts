@@ -6,39 +6,54 @@ import { Customer, FaceDetection, MatchResult } from '../types';
 // Patch face-api.js to use node-canvas
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 
+
+/**
+ * Dịch vụ nhận diện khuôn mặt
+ */
 export class FaceService {
   private modelsLoaded = false;
   private detectorOptions: faceapi.TinyFaceDetectorOptions;
   
   constructor() {
     this.detectorOptions = new faceapi.TinyFaceDetectorOptions(
-      config.face.detectorOptions
+      ...(Array.isArray(config.face.detectorOptions)
+        ? config.face.detectorOptions
+        : Object.values(config.face.detectorOptions))
     );
   }
   
+  /**
+   * Tải các mô hình nhận diện khuôn mặt
+   * @returns 
+   */
   async loadModels(): Promise<void> {
     if (this.modelsLoaded) {
       return;
     }
     
     try {
-      console.log('[Face] Loading models...');
+      console.log('[Face] Đang tải mô hình...');
       
       await faceapi.nets.tinyFaceDetector.loadFromDisk(config.face.modelPath);
       await faceapi.nets.faceLandmark68Net.loadFromDisk(config.face.modelPath);
       await faceapi.nets.faceRecognitionNet.loadFromDisk(config.face.modelPath);
       
       this.modelsLoaded = true;
-      console.log('[Face] Models loaded ✓');
+      console.log('[Face] Đã tải mô hình ✓');
     } catch (error) {
-      console.error('[Face] Failed to load models:', error);
+      console.error('[Face] Không tải được mô hình:', error);
       throw error;
     }
   }
   
+  /**
+   * Phát hiện khuôn mặt trong hình ảnh
+   * @param imageBuffer 
+   * @returns 
+   */
   async detectFace(imageBuffer: Buffer): Promise<FaceDetection> {
     if (!this.modelsLoaded) {
-      throw new Error('Models not loaded');
+      throw new Error('Mô hình không được tải');
     }
     
     try {
@@ -50,7 +65,7 @@ export class FaceService {
         .withFaceDescriptor();
       
       if (!detection) {
-        throw new Error('No face detected');
+        throw new Error('Không phát hiện được khuôn mặt');
       }
       
       return {
@@ -58,14 +73,20 @@ export class FaceService {
         confidence: detection.detection.score
       };
     } catch (error) {
-      if (error instanceof Error && error.message === 'No face detected') {
+      if (error instanceof Error && error.message === 'Không phát hiện được khuôn mặt') {
         throw error;
       }
       console.error('[Face] Detection error:', error);
-      throw new Error('Face detection failed');
+      throw new Error('Không thể phát hiện khuôn mặt');
     }
   }
   
+  /**
+   * So sánh khuôn mặt với danh sách khách hàng
+   * @param descriptor 
+   * @param customers 
+   * @returns 
+   */
   async matchFace(descriptor: Float32Array, customers: Customer[]): Promise<MatchResult> {
     if (!this.modelsLoaded) {
       throw new Error('Models not loaded');

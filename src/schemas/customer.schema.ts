@@ -37,6 +37,12 @@ export const registerSchema = {
 
 export const getCustomersSchema = {
   response: {
+    500 :{
+      type: 'object',
+      properties: {
+        message: { type: 'string' }
+      }
+    },
     200: {
       type: 'object',
       properties: {

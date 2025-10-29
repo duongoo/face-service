@@ -48,7 +48,7 @@ export async function buildApp() {
   const cache = new CacheService(dbService);
   await cache.get(); // Pre-load cache
   
-  console.log('\n✓ All services initialized\n');
+  console.log('\n✓ Tất cả các dịch vụ được khởi tạo\n');
   
   // Decorate Fastify instance with services
   fastify.decorate('dbService', dbService);
