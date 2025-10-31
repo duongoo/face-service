@@ -9,6 +9,7 @@ export const checkinSchema = {
           type: 'object',
           properties: {
             name: { type: 'string' },
+            distance: { type: 'number' },
             confidence: { type: 'number' }
           }
         },
@@ -29,4 +30,18 @@ export const checkinSchema = {
       }
     }
   }
+};
+
+/**
+ * Schema cho endpoint nhận descriptor từ client (binary file upload)
+ * Expect multipart/form-data with file field 'descriptor' containing Float32 binary
+ */
+export const detectionCheckinSchema = {
+  consumes: ['multipart/form-data'],
+  body: {
+    properties: {
+      confidence: { type: 'number' }
+    }
+  },
+  response: checkinSchema.response
 };

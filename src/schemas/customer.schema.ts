@@ -1,7 +1,6 @@
 export const registerSchema = {
   consumes: ['multipart/form-data'],
   body: {
-    type: 'object',
     required: ['name'],
     properties: {
       name: {
@@ -63,6 +62,41 @@ export const getCustomersSchema = {
           }
         },
         total: { type: 'number' }
+      }
+    }
+  }
+};
+
+/**
+ * Schema cho endpoint nhận descriptor từ client (binary file upload)
+ * Expect multipart/form-data with file field 'descriptor' and field 'name'
+ */
+export const detectionRegisterSchema = {
+  consumes: ['multipart/form-data'],
+  body: {
+    required: ['name'],
+    properties: {
+      name: { type: 'string' }
+    }
+  },
+  response: {
+    201: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        customer: { type: 'string' }
+      }
+    },
+    400: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' }
+      }
+    },
+    500: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' }
       }
     }
   }

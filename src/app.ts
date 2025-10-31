@@ -26,7 +26,20 @@ export async function buildApp() {
   
   // Register plugins
   await fastify.register(cors, {
-    origin: config.corsOrigin,
+    origin: (origin, cb) => {
+      const allowed = (Array.isArray(config.corsOrigin) ? config.corsOrigin : [config.corsOrigin]).map(s => String(s).trim());
+      console.log(`[CORS] request origin: ${origin} | allowed: ${JSON.stringify(allowed)}`);
+      // Allow non-browser requests (no origin)
+      if (!origin) return cb(null, true);
+      // Exact match after trimming
+      if (allowed.includes(origin.trim())) return cb(null, true);
+      // Temporary: allow any localhost origin to help debugging (ports vary)
+      if (origin && origin.startsWith('http://localhost')) {
+        console.log(`[CORS] auto-allow localhost origin: ${origin}`);
+        return cb(null, true);
+      }
+      return cb(null, false);
+    },
     credentials: true
   });
   

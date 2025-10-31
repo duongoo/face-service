@@ -3,7 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { DatabaseService } from '../services/database.service';
 import { FaceService } from '../services/face.service';
 import { CacheService } from '../services/cache.service';
-import { registerSchema, getCustomersSchema } from '../schemas/customer.schema';
+import { registerSchema, getCustomersSchema, detectionRegisterSchema } from '../schemas/customer.schema';
 
 /**
  * Định nghĩa các route liên quan đến khách hàng cho Fastify.
@@ -92,6 +92,70 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
+  // New endpoint: register using descriptor sent from client (binary Float32 via multipart/form-data)
+  fastify.post('/register/detection', {
+    schema: detectionRegisterSchema
+  }, async (request, reply) => {
+    try {
+      // Expect multipart/form-data with file field named 'descriptor' and field 'name'
+      const data = await request.file();
+
+      if (!data) {
+        return reply.code(400).send({
+          message: 'Thiếu tên hoặc descriptor để đăng ký'
+        });
+      }
+
+      // Get name from fields
+      const fields = data.fields;
+      let name = '';
+
+      if (fields.name) {
+        const nameField = fields.name;
+        if ('value' in nameField) {
+          name = nameField.value as string;
+        }
+      }
+
+      if (!name) {
+        return reply.code(400).send({
+          message: 'Thiếu tên khách hàng'
+        });
+      }
+
+      // Read uploaded file into a Buffer
+      const buf = await data.toBuffer();
+
+      // Convert Buffer -> Float32Array safely taking byteOffset into account
+      const descriptor = new Float32Array(
+        buf.buffer,
+        buf.byteOffset,
+        buf.byteLength / Float32Array.BYTES_PER_ELEMENT
+      );
+
+      if (!descriptor || descriptor.length === 0) {
+        return reply.code(400).send({
+          message: 'Descriptor rỗng hoặc không hợp lệ'
+        });
+      }
+
+      await dbService.saveCustomer(name, Array.from(descriptor));
+      await cache.invalidate();
+
+      return reply.code(201).send({
+        message: `Đăng ký thành công cho "${name}" ✓`,
+        customer: name
+      });
+    } catch (error) {
+      fastify.log.error(error);
+
+      return reply.code(500).send({
+        message: 'Lỗi server khi đăng ký khách hàng bằng descriptor'
+      });
+    }
+  });
+
   
   // Get all customers
   fastify.get('/customers', {

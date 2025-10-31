@@ -150,7 +150,7 @@ export class FaceService {
         .withFaceDescriptor();
       
       if (!detection) {
-        throw new Error('Không phát hiện được khuôn mặt');
+        throw new Error('No face detected');
       }
       
       return {
@@ -158,11 +158,11 @@ export class FaceService {
         confidence: detection.detection.score
       };
     } catch (error) {
-      if (error instanceof Error && error.message === 'Không phát hiện được khuôn mặt') {
+      if (error instanceof Error && error.message === 'No face detected') {
         throw error;
       }
       console.error('[Face] Detection error:', error);
-      throw new Error('Không thể phát hiện khuôn mặt');
+      throw new Error('No face detected');
     }
   }
   
