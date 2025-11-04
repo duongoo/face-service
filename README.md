@@ -241,8 +241,108 @@ curl -X POST http://localhost:3000/checkin \
 
 ---
 
+## Hướng dẫn commit
+### Quy tắc commit chuẩn cho dự án
+
+#### Conventional Commit types (bắt buộc dùng):
+
+- **feat:** (Feature) Thêm một tính năng mới.
+- **fix:** (Bug fix) Sửa một lỗi.
+- **docs:** (Documentation) Chỉ thay đổi về tài liệu (document, comment code).
+- **style:** Thay đổi về định dạng code (linting, bỏ dấu chấm phẩy, thụt lề) - không ảnh hưởng đến logic.
+- **refactor:** Tái cấu trúc (refactor) code, không thêm tính năng mới hay sửa lỗi.
+- **test:** Thêm hoặc sửa test case.
+- **chore:** Các công việc "lặt vặt" không liên quan đến code (build scripts, cập nhật dependencies, config file).
+- **perf:** (Performance) Cải thiện hiệu suất.
+
+1. **Luôn commit nhỏ, rõ ràng, tập trung 1 mục đích**
+   - Mỗi commit chỉ nên giải quyết 1 vấn đề (bug, feature, refactor, doc...)
+   - Tránh commit dồn nhiều thay đổi không liên quan
+
+2. **Đặt message ngắn gọn, mô tả đúng bản chất thay đổi**
+   - Dùng tiếng Việt không dấu hoặc tiếng Anh, nhất quán trong repo
+   - Không dùng các từ chung chung kiểu "update", "fix bug" mà phải rõ: `fix: xử lý lỗi không nhận diện khuôn mặt`, `feat: thêm API /customers`, `refactor: tách logic cache ra service riêng`
+
+3. **Cấu trúc message**
+   - Theo chuẩn [Conventional Commits](https://www.conventionalcommits.org/):
+     ```
+     <type>(scope?): <short summary>
+     
+     [body - optional]
+     [footer - optional]
+     ```
+   - Ví dụ:
+     - `feat(api): thêm endpoint check-in bằng khuôn mặt`
+     - `fix(db): sửa lỗi lưu descriptor dạng JSON`
+     - `docs(readme): bổ sung hướng dẫn seed dữ liệu`
+     - `style: chuẩn hóa indent toàn bộ project`
+     - `refactor(face): tách logic detect ra service riêng`
+     - `test: thêm test cho service cache`
+     - `chore: update dependencies, bump version package`
+     - `perf(face): tăng tốc so khớp descriptor`
+
+4. **Commit body (nếu cần)**
+   - Giải thích lý do, ảnh hưởng, hướng dẫn test nếu là thay đổi lớn
+   - Có thể liệt kê các file chính bị ảnh hưởng
+
+5. **Không commit file thừa, file tạm, secrets**
+   - Đảm bảo `.env`, file data cá nhân, node_modules, dist... đã nằm trong `.gitignore`
+
+6. **Kiểm tra lại code trước khi commit**
+   - Chạy linter, build thử, test thủ công endpoint chính
+   - Đảm bảo không có lỗi syntax, không push code đang dở
+
+7. **Squash commit khi merge PR**
+   - Nếu merge nhiều commit nhỏ, nên squash để giữ lịch sử gọn gàng
+
+### Mẫu commit message tốt
+
+```
+feat(customer): thêm API đăng ký khách hàng mới
+
+- Xử lý upload ảnh, trích xuất descriptor
+- Lưu vào DB, cập nhật cache
+- Viết schema validate cho request
+```
+
+```
+fix(face): sửa lỗi không detect được khuôn mặt khi ảnh quá nhỏ
+
+Nguyên nhân do inputSize cấu hình thấp, đã tăng lên 256.
+```
+
+```
+docs(readme): bổ sung hướng dẫn commit chuẩn
+```
+
+```
+style: chuẩn hóa indent toàn bộ project
+```
+
+```
+refactor(face): tách logic detect ra service riêng
+```
+
+```
+test: thêm test cho service cache
+```
+
+```
+chore: update dependencies, bump version package
+```
+
+```
+perf(face): tăng tốc so khớp descriptor
+```
+
+### Lưu ý
+- Nếu commit liên quan đến bảo mật, migration DB, hoặc breaking change, phải ghi rõ trong message/body.
+- Luôn review lại diff trước khi push.
+
+
 ## License
 MIT
+
 
 ## Tác giả & Liên hệ
 Dự án được phát triển và duy trì bởi **Phước Dưỡng IT**  
