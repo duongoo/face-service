@@ -1,3 +1,4 @@
+
 /**
  * Seeder tạo dữ liệu khách hàng giả cho hệ thống nhận diện khuôn mặt.
  *
@@ -35,7 +36,7 @@ const https = require('https');
 const { Canvas, Image, ImageData, loadImage, createCanvas } = require('canvas');
 const faceapi = require('face-api.js');
 const mssql = require('mssql');
-const dbConfig = require('../dbConfig');
+const { config } = require('./config');
 
 const MODELS_PATH = path.join(__dirname, '..', 'storage', 'models');
 const AVATARS_ROOT = path.join(__dirname, '..', 'storage', 'avatars');
@@ -44,6 +45,8 @@ const DOWNLOAD_DIR = path.join(AVATARS_ROOT, 'downloaded');
 const TOTAL_CUSTOMERS = Number(process.argv[2]) || 100;
 const RESET_MODE = process.argv.includes('--reset');
 const REQUEST_TIMEOUT_MS = 15000;
+
+let descriptorGlobal;
 
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 
@@ -140,6 +143,15 @@ const fetchFaceBuffer = async () => {
   return fetchBuffer(preferredUrl);
 };
 
+/**
+ * Đọc buffer ảnh từ file local (không gọi API randomuser.me)
+ * @param {string} filePath - Đường dẫn tuyệt đối hoặc tương đối tới file ảnh
+ * @returns {Promise<Buffer>} Buffer ảnh
+ */
+const fetchFaceBufferFromFile = async (filePath) => {
+  return fs.promises.readFile(filePath);
+};
+
 const createUploadVariant = (image) => {
   const cropSize = Math.min(image.width, image.height);
   const targetSize = 256;
@@ -186,14 +198,19 @@ const createCustomer = async (pool, index) => {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const faceBuffer = await fetchFaceBuffer();
+      // const faceBuffer = await fetchFaceBuffer();
+      const faceBuffer = await fetchFaceBufferFromFile("./storage/avatars/sample/avata.jpg");
       const image = await loadImage(faceBuffer);
-      const descriptor = await computeDescriptor(image);
 
-      if (!descriptor) {
-        console.warn(`[${index}] Không nhận diện được khuôn mặt. Thử lại (${attempt}/${maxAttempts})`);
-        continue;
+      if(!this.descriptorGlobal){
+          const descriptor = await computeDescriptor(image);
+          this.descriptorGlobal = descriptor;
       }
+      if(!this.descriptorGlobal) {
+            console.warn(`[${index}] Không nhận diện được khuôn mặt. Thử lại (${attempt}/${maxAttempts})`);
+            continue;
+      }
+      
       let lastName = pickRandom(lastNames);
       let firstName = pickRandom(firstNames);
   const baseName = `customer_${lastName}_${firstName}_${pad(index, 6)}`;
@@ -202,7 +219,7 @@ const createCustomer = async (pool, index) => {
   fs.writeFileSync(downloadPath, faceBuffer);
 
   const fullName = `${lastName} ${firstName} #${pad(index, 6)}`;
-  await storeCustomer(pool, fullName, descriptor);
+  await storeCustomer(pool, fullName, this.descriptorGlobal);
   console.log(`[${index}] Tạo khách hàng thành công: ${fullName}`);
   return { name: fullName, downloadPath };
     } catch (error) {
@@ -243,7 +260,7 @@ const main = async () => {
 
   let pool;
   try {
-    pool = await mssql.connect(dbConfig);
+  pool = await mssql.connect(config.database);
     if (RESET_MODE) {
       console.log('Đang xoá dữ liệu cũ trong bảng Customers...');
       await pool.request().query('DELETE FROM Customers');
