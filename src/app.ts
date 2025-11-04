@@ -59,7 +59,7 @@ export async function buildApp() {
   await faceService.loadModels();
   
   const cache = new CacheService(dbService);
-  await cache.get(); // Pre-load cache
+  await cache.refresh(); // Pre-load cache (tải dữ liệu ngay khi khởi động)
   
   console.log('\n✓ Tất cả các dịch vụ được khởi tạo\n');
   

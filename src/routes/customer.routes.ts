@@ -176,4 +176,18 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+  // API cập nhật lại cache khách hàng thủ công
+  fastify.post('/customers/refresh-cache', async (request, reply) => {
+    try {
+      await cache.refresh();
+      return reply.send({
+        message: 'Đã làm mới cache khách hàng thành công'
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({
+        message: 'Lỗi server khi làm mới cache khách hàng'
+      });
+    }
+  });
 };

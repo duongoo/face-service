@@ -35,13 +35,7 @@ export class CacheService {
   constructor(private db: DatabaseService) {}
   
   async get(): Promise<Customer[]> {
-    const now = Date.now();
-    
-    // Refresh cache if expired or empty
-    if (now - this.lastUpdate > config.cache.ttl || this.customers.length === 0) {
-      await this.refresh();
-    }
-    
+    // Luôn trả về dữ liệu cache hiện tại, không tự động refresh
     return this.customers;
   }
   

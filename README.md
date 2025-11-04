@@ -168,6 +168,10 @@ CREATE INDEX idx_customer_name ON Customers(name);
 - GET `/cache-stats`
 - Trả về thông tin cache (số lượng, TTL, last update)
 
+6. Làm mới cache khách hàng thủ công
+- POST `/customers/refresh-cache`
+- Mô tả: gọi endpoint này để cập nhật lại cache khách hàng từ database (không cần restart server). Nên gọi sau khi thêm/xóa/sửa khách hàng từ hệ thống khác hoặc khi muốn đồng bộ dữ liệu mới nhất vào cache.
+
 Ghi chú: chi tiết schema request/response nằm trong `src/schemas/` — luôn cập nhật khi sửa API.
 
 ---
@@ -184,7 +188,7 @@ Ghi chú: chi tiết schema request/response nằm trong `src/schemas/` — luô
 
 ## Vận hành & Bảo trì (Best practices)
 - Models: nếu thay đổi model, chạy lại `scripts/setup-models.js` và restart service.
-- Cache: cache làm giảm số query đến DB; nếu thấy dữ liệu không đồng bộ, force refresh cache hoặc restart server.
+- Cache: cache làm giảm số query đến DB; nếu thấy dữ liệu không đồng bộ, hãy gọi API `POST /customers/refresh-cache` để làm mới cache ngay lập tức (không cần restart server).
 - DB: thực hiện backup định kỳ; khi thay đổi schema, tạo migration và chạy trên môi trường staging trước khi deploy.
 - Tuning:
   - Điều chỉnh `FACE_MATCH_THRESHOLD` để cân bằng false positive/negative.
