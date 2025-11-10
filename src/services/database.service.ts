@@ -88,22 +88,23 @@ export class DatabaseService {
     }
   }
   
-  async getAllCustomers(): Promise<Customer[]> {
+  async getCustomers(page: number, pageSize: number): Promise<Customer[]> {
     if (!this.pool) {
       throw new Error('Database not connected');
     }
-    
+    const offset = (page - 1) * pageSize;
     const result = await this.pool
       .request()
-      .query('SELECT name, descriptor FROM Customers');
-    
+      .input('offset', mssql.Int, offset)
+      .input('pageSize', mssql.Int, pageSize)
+      .query('SELECT name, descriptor FROM Customers ORDER BY id OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY');
     return result.recordset.map(row => ({
       name: row.name,
       descriptors: this.parseDescriptors(row.descriptor)
     }));
   }
   
-  async saveCustomer(name: string, descriptor: number[]): Promise<void> {
+  async saveCustomer(name: string, descriptor: number[]): Promise<Customer> {
     if (!this.pool) {
       throw new Error('Database not connected');
     }
@@ -143,6 +144,11 @@ export class DatabaseService {
         .input('descriptor', mssql.NVarChar, descriptorJson)
         .query('INSERT INTO Customers (name, descriptor) VALUES (@name, @descriptor)');
     }
+    // Trả về customer vừa lưu
+    return {
+      name,
+      descriptors
+    };
   }
   
   private parseDescriptors(raw: any): number[][] {

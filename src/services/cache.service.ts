@@ -41,9 +41,19 @@ export class CacheService {
   
   async refresh(): Promise<void> {
     console.log('[Cache] Refreshing customer cache...');
-    
+    const pageSize = 500;
+    let page = 1;
+    let allCustomers: Customer[] = [];
     try {
-      this.customers = await this.db.getAllCustomers();
+      while (true) {
+        console.log(`[Cache] Loading customers, page ${page}...`);
+        const customers = await this.db.getCustomers(page, pageSize);
+        if (customers.length === 0) break;
+        allCustomers = allCustomers.concat(customers);
+        if (customers.length < pageSize) break;
+        page++;
+      }
+      this.customers = allCustomers;
       this.lastUpdate = Date.now();
       console.log(`[Cache] Loaded ${this.customers.length} customers ✓`);
     } catch (error) {
@@ -64,5 +74,16 @@ export class CacheService {
       lastUpdateSeconds: ageSeconds,
       ttlSeconds: config.cache.ttl / 1000
     };
+  }
+
+  // Thêm hoặc cập nhật khách hàng vào cache (write-through)
+  addOrUpdateCustomer(customer: Customer) {
+    const idx = this.customers.findIndex(c => c.id === customer.id);
+    if (idx >= 0) {
+      this.customers[idx] = customer;
+    } else {
+      this.customers.push(customer);
+    }
+    this.lastUpdate = Date.now();
   }
 }

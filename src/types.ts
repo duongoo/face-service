@@ -1,5 +1,6 @@
 // Customer types
 export interface Customer {
+  id?: number;
   name: string;
   descriptors: number[][];
 }

@@ -66,11 +66,10 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
       const detection = await faceService.detectFace(buffer);
       
       // Save to database
-      await dbService.saveCustomer(name, Array.from(detection.descriptor));
-      
-      // Invalidate cache to reload customers
-      await cache.invalidate();
-      
+      const customer = await dbService.saveCustomer(name, Array.from(detection.descriptor));
+      // Update cache ngay lập tức
+      cache.addOrUpdateCustomer(customer);
+
       return reply.code(201).send({
         message: `Đăng ký thành công cho "${name}" ✓`,
         customer: name
@@ -140,8 +139,8 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      await dbService.saveCustomer(name, Array.from(descriptor));
-      await cache.invalidate();
+      const customer = await dbService.saveCustomer(name, Array.from(descriptor));
+      cache.addOrUpdateCustomer(customer);
 
       return reply.code(201).send({
         message: `Đăng ký thành công cho "${name}" ✓`,
