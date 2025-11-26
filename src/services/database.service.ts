@@ -4,23 +4,23 @@
  * @description
  * Service này xử lý các thao tác liên quan đến database cho hệ thống nhận diện khuôn mặt:
  * - Quản lý kết nối đến SQL Server
- * - Lưu trữ và truy xuất thông tin khách hàng (Customer)
+ * - Lưu trữ và truy xuất thông tin khách hàng (Patient)
  * - Quản lý face descriptors (vector đặc trưng khuôn mặt)
  * - Tự động giới hạn số lượng descriptors cho mỗi khách hàng (tối đa 5)
  * 
  * @remarks
  * Luồng xử lý chính:
  * 1. Khởi tạo kết nối database qua `connect()`
- * 2. Lấy danh sách khách hàng qua `getAllCustomers()`
- * 3. Lưu/cập nhật thông tin khách hàng qua `saveCustomer()`
+ * 2. Lấy danh sách khách hàng qua `getAllPatients()`
+ * 3. Lưu/cập nhật thông tin khách hàng qua `savePatient()`
  * 4. Đóng kết nối khi không sử dụng qua `close()`
  * 
  * @example
  * ```typescript
  * const dbService = new DatabaseService();
  * await dbService.connect();
- * await dbService.saveCustomer("John Doe", [0.1, 0.2, ...]);
- * const customers = await dbService.getAllCustomers();
+ * await dbService.savePatient("John Doe", [0.1, 0.2, ...]);
+ * const patients = await dbService.getAllPatients();
  * await dbService.close();
  * ```
  */
@@ -32,7 +32,7 @@
 
 /**
  * Lấy danh sách tất cả khách hàng từ database
- * @returns {Promise<Customer[]>} Mảng các đối tượng Customer chứa tên và descriptors
+ * @returns {Promise<Patient[]>} Mảng các đối tượng Patient chứa tên và descriptors
  * @throws {Error} Nếu database chưa được kết nối
  */
 
@@ -72,7 +72,7 @@
 import mssql from 'mssql';
 import { config } from '../config';
 import path = require('path');
-import { Customer } from '../types';
+import { Patient } from '../types';
 
 
 export class DatabaseService {
@@ -88,7 +88,7 @@ export class DatabaseService {
     }
   }
   
-  async getCustomers(page: number, pageSize: number): Promise<Customer[]> {
+  async getPatients(page: number, pageSize: number): Promise<Patient[]> {
     if (!this.pool) {
       throw new Error('Database not connected');
     }
@@ -97,23 +97,24 @@ export class DatabaseService {
       .request()
       .input('offset', mssql.Int, offset)
       .input('pageSize', mssql.Int, pageSize)
-      .query('SELECT name, descriptor FROM Customers ORDER BY id OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY');
+      .query('SELECT PatientId,PatientName, Descriptor, SortOrder FROM [dbo].[Patient] ORDER BY SortOrder OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY');
     return result.recordset.map(row => ({
-      name: row.name,
-      descriptors: this.parseDescriptors(row.descriptor)
+      PatientName: row.PatientName,
+      PatientId: row.PatientId,
+      Descriptor: this.parseDescriptors(row.Descriptor)
     }));
   }
   
-  async saveCustomer(name: string, descriptor: number[]): Promise<Customer> {
+  async savePatient(PatientId:string, PatientName: string, Descriptor: number[]): Promise<Patient> {
     if (!this.pool) {
       throw new Error('Database not connected');
     }
     
-    // Check if customer exists
+    // Check if patient exists
     const existing = await this.pool
       .request()
-      .input('name', mssql.NVarChar, name)
-      .query('SELECT descriptor FROM Customers WHERE name = @name');
+      .input('PatientId', mssql.NVarChar, PatientId)
+      .query('SELECT descriptor FROM [dbo].[Patient] WHERE PatientId = @PatientId');
     
     let descriptors: number[][] = [];
     
@@ -122,7 +123,7 @@ export class DatabaseService {
     }
     
     // Add new descriptor and keep only last 5
-    descriptors.push(descriptor);
+    descriptors.push(Descriptor);
     if (descriptors.length > 5) {
       descriptors = descriptors.slice(-5);
     }
@@ -130,24 +131,27 @@ export class DatabaseService {
     const descriptorJson = JSON.stringify(descriptors);
     
     if (existing.recordset.length > 0) {
-      // Update existing customer
+      // Update existing patient
       await this.pool
         .request()
-        .input('name', mssql.NVarChar, name)
+        .input('PatientId', mssql.NVarChar, PatientId)
+        .input('PatientName', mssql.NVarChar, PatientName)
         .input('descriptor', mssql.NVarChar, descriptorJson)
-        .query('UPDATE Customers SET descriptor = @descriptor WHERE name = @name');
+        .query('UPDATE [dbo].[Patient] SET Descriptor = @descriptor WHERE PatientName = @PatientName');
     } else {
-      // Insert new customer
+      // Insert new patient
       await this.pool
         .request()
-        .input('name', mssql.NVarChar, name)
+        .input('PatientId', mssql.NVarChar, PatientId)
+        .input('PatientName', mssql.NVarChar, PatientName)
         .input('descriptor', mssql.NVarChar, descriptorJson)
-        .query('INSERT INTO Customers (name, descriptor) VALUES (@name, @descriptor)');
+        .query('INSERT INTO [dbo].[Patient] (PatientId, PatientName, Descriptor) VALUES (@PatientId, @PatientName, @descriptor)');
     }
-    // Trả về customer vừa lưu
+    // Trả về patient vừa lưu
     return {
-      name,
-      descriptors
+      PatientId,
+      PatientName,
+      Descriptor: descriptors
     };
   }
   

@@ -5,10 +5,12 @@ export const checkinSchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean' },
-        customer: {
+        patient: {
           type: 'object',
           properties: {
-            name: { type: 'string' },
+            PatientName: { type: 'string' },
+            PatientId: { type: 'string' },
+            SortOrder: { type: 'number' },
             distance: { type: 'number' },
             confidence: { type: 'number' }
           }

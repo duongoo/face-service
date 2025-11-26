@@ -10,7 +10,7 @@
  * Luồng xử lý khuyến nghị:
  * 1) Gọi `loadModels()` một lần khi dịch vụ khởi động (idempotent).
  * 2) Với mỗi ảnh đầu vào, gọi `detectFace(buffer)` để lấy descriptor và độ tự tin.
- * 3) Gọi `matchFace(descriptor, customers)` để so khớp với cơ sở dữ liệu khách hàng.
+ * 3) Gọi `matchFace(descriptor, patients)` để so khớp với cơ sở dữ liệu khách hàng.
  */
 
 /**
@@ -29,8 +29,8 @@
  * const { descriptor, confidence } = await service.detectFace(imageBuffer);
  *
  * // So khớp với danh sách khách hàng đã lưu descriptor
- * const result = await service.matchFace(descriptor, customers);
- * console.log(result.customer.name, result.distance);
+ * const result = await service.matchFace(descriptor, patients);
+ * console.log(result.patient.name, result.distance);
  */
 
 /**
@@ -69,11 +69,11 @@
  * So khớp một descriptor với danh sách khách hàng.
  *
  * @param descriptor Descriptor khuôn mặt cần so khớp (Float32Array).
- * @param customers Danh sách khách hàng, mỗi khách hàng có thể chứa nhiều descriptor đã lưu.
+ * @param patients Danh sách khách hàng, mỗi khách hàng có thể chứa nhiều descriptor đã lưu.
  *
  * @returns
  * Kết quả so khớp:
- * - `customer`: khách hàng được nhận diện.
+ * - `patient`: khách hàng được nhận diện.
  * - `distance`: khoảng cách đặc trưng (càng nhỏ càng giống).
  *
  * @remarks
@@ -90,7 +90,7 @@
 import * as faceapi from 'face-api.js';
 import { Canvas, Image, ImageData, loadImage } from 'canvas';
 import { config } from '../config';
-import { Customer, FaceDetection, MatchResult } from '../types';
+import { Patient, FaceDetection, MatchResult } from '../types';
 
 // Patch face-api.js to use node-canvas
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
@@ -169,25 +169,25 @@ export class FaceService {
   /**
    * So sánh khuôn mặt với danh sách khách hàng
    * @param descriptor 
-   * @param customers 
+   * @param patients 
    * @returns 
    */
-  async matchFace(descriptor: Float32Array, customers: Customer[]): Promise<MatchResult> {
+  async matchFace(descriptor: Float32Array, patients: Patient[]): Promise<MatchResult> {
     if (!this.modelsLoaded) {
       throw new Error('Models not loaded');
     }
     
-    // Filter customers with valid descriptors
-    const validCustomers = customers.filter(c => c.descriptors.length > 0);
+    // Filter patients with valid descriptors
+    const validPatients = patients.filter(c => c.Descriptor.length > 0);
     
-    if (validCustomers.length === 0) {
-      throw new Error('No customers in database');
+    if (validPatients.length === 0) {
+      throw new Error('No patients in database');
     }
     
     // Create labeled face descriptors
-    const labeledDescriptors = validCustomers.map(customer => {
-      const descriptors = customer.descriptors.map(d => new Float32Array(d));
-      return new faceapi.LabeledFaceDescriptors(customer.name, descriptors);
+    const labeledDescriptors = validPatients.map(patient => {
+      const descriptors = patient.Descriptor.map(d => new Float32Array(d));
+      return new faceapi.LabeledFaceDescriptors(patient.PatientId, descriptors);
     });
     
     // Create face matcher
@@ -200,18 +200,18 @@ export class FaceService {
     const bestMatch = faceMatcher.findBestMatch(descriptor);
     
     if (bestMatch.label === 'unknown') {
-      throw new Error('Customer not recognized');
+      throw new Error('Patient not recognized');
     }
     
-    // Find the matched customer
-    const matchedCustomer = validCustomers.find(c => c.name === bestMatch.label);
+    // Find the matched patient
+    const matchedPatient = validPatients.find(c => c.PatientId === bestMatch.label);
     
-    if (!matchedCustomer) {
-      throw new Error('Customer not found');
+    if (!matchedPatient) {
+      throw new Error('Patient not found');
     }
     
     return {
-      customer: matchedCustomer,
+      patient: matchedPatient,
       distance: bestMatch.distance
     };
   }

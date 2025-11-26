@@ -1,12 +1,13 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import formbody from '@fastify/formbody';
 import { config } from './config';
 import { DatabaseService } from './services/database.service';
 import { FaceService } from './services/face.service';
 import { CacheService } from './services/cache.service';
 import { healthRoutes } from './routes/health.routes';
-import { customerRoutes } from './routes/customer.routes';
+import { patientRoutes } from './routes/patient.routes';
 import { checkinRoutes } from './routes/checkin.routes';
 
 export async function buildApp() {
@@ -48,6 +49,9 @@ export async function buildApp() {
       fileSize: 10 * 1024 * 1024 // 10MB
     }
   });
+
+  // Parse x-www-form-urlencoded bodies
+  await fastify.register(formbody);
   
   // Initialize services
   console.log('\n🔧 Initializing services...\n');
@@ -70,7 +74,7 @@ export async function buildApp() {
   
   // Register routes
   await fastify.register(healthRoutes);
-  await fastify.register(customerRoutes);
+  await fastify.register(patientRoutes);
   await fastify.register(checkinRoutes);
   
   // Graceful shutdown

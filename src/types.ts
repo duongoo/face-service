@@ -1,8 +1,9 @@
-// Customer types
-export interface Customer {
-  id?: number;
-  name: string;
-  descriptors: number[][];
+// Patient types
+export interface Patient {
+  PatientId: string;
+  PatientName: string;
+  Descriptor: number[][];
+  SortOrder?: number;
 }
 
 // Face recognition types
@@ -12,15 +13,16 @@ export interface FaceDetection {
 }
 
 export interface MatchResult {
-  customer: Customer;
+  patient: Patient;
   distance: number;
 }
 
 // API Response types
 export interface CheckinResult {
   success: boolean;
-  customer?: {
-    name: string;
+  patient?: {
+    PatientName: string;
+    PatientId: string;
     confidence: number;
   };
   message: string;
@@ -28,10 +30,10 @@ export interface CheckinResult {
 
 export interface RegisterResult {
   message: string;
-  customer: string;
+  patient: string;
 }
 
-export interface CustomersResponse {
-  customers: Customer[];
+export interface PatientsResponse {
+  patients: Patient[];
   total: number;
 }

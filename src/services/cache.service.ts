@@ -1,4 +1,4 @@
-import { Customer } from '../types';
+import { Patient } from '../types';
 import { DatabaseService } from './database.service';
 import { config } from '../config';
 
@@ -25,37 +25,37 @@ import { config } from '../config';
  *
  * Ví dụ:
  * const cache = new CacheService(databaseService);
- * const customers = await cache.get();
+ * const patients = await cache.get();
  * await cache.invalidate(); // làm mới ngay
  */
 export class CacheService {
-  private customers: Customer[] = [];
+  private patients: Patient[] = [];
   private lastUpdate = 0;
   
   constructor(private db: DatabaseService) {}
   
-  async get(): Promise<Customer[]> {
+  async get(): Promise<Patient[]> {
     // Luôn trả về dữ liệu cache hiện tại, không tự động refresh
-    return this.customers;
+    return this.patients;
   }
   
   async refresh(): Promise<void> {
-    console.log('[Cache] Refreshing customer cache...');
+    console.log('[Cache] Refreshing patient cache...');
     const pageSize = 500;
     let page = 1;
-    let allCustomers: Customer[] = [];
+    let allPatients: Patient[] = [];
     try {
       while (true) {
-        console.log(`[Cache] Loading customers, page ${page}...`);
-        const customers = await this.db.getCustomers(page, pageSize);
-        if (customers.length === 0) break;
-        allCustomers = allCustomers.concat(customers);
-        if (customers.length < pageSize) break;
+        console.log(`[Cache] Loading patients, page ${page}...`);
+        const patients = await this.db.getPatients(page, pageSize);
+        if (patients.length === 0) break;
+        allPatients = allPatients.concat(patients);
+        if (patients.length < pageSize) break;
         page++;
       }
-      this.customers = allCustomers;
+      this.patients = allPatients;
       this.lastUpdate = Date.now();
-      console.log(`[Cache] Loaded ${this.customers.length} customers ✓`);
+      console.log(`[Cache] Loaded ${this.patients.length} patients ✓`);
     } catch (error) {
       console.error('[Cache] Refresh failed:', error);
       throw error;
@@ -70,19 +70,19 @@ export class CacheService {
   getStats() {
     const ageSeconds = Math.floor((Date.now() - this.lastUpdate) / 1000);
     return {
-      customerCount: this.customers.length,
+      patientCount: this.patients.length,
       lastUpdateSeconds: ageSeconds,
       ttlSeconds: config.cache.ttl / 1000
     };
   }
 
   // Thêm hoặc cập nhật khách hàng vào cache (write-through)
-  addOrUpdateCustomer(customer: Customer) {
-    const idx = this.customers.findIndex(c => c.id === customer.id);
+  addOrUpdatePatient(patient: Patient) {
+    const idx = this.patients.findIndex(c => c.PatientId === patient.PatientId);
     if (idx >= 0) {
-      this.customers[idx] = customer;
+      this.patients[idx] = patient;
     } else {
-      this.customers.push(customer);
+      this.patients.push(patient);
     }
     this.lastUpdate = Date.now();
   }

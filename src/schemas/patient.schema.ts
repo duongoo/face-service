@@ -16,7 +16,7 @@ export const registerSchema = {
       type: 'object',
       properties: {
         message: { type: 'string' },
-        customer: { type: 'string' }
+        patient: { type: 'string' }
       }
     },
     400: {
@@ -34,7 +34,7 @@ export const registerSchema = {
   }
 };
 
-export const getCustomersSchema = {
+export const getPatientsSchema = {
   response: {
     500 :{
       type: 'object',
@@ -45,7 +45,7 @@ export const getCustomersSchema = {
     200: {
       type: 'object',
       properties: {
-        customers: {
+        patients: {
           type: 'array',
           items: {
             type: 'object',
@@ -84,7 +84,7 @@ export const detectionRegisterSchema = {
       type: 'object',
       properties: {
         message: { type: 'string' },
-        customer: { type: 'string' }
+        patient: { type: 'string' }
       }
     },
     400: {

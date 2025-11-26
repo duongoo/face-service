@@ -58,17 +58,19 @@ export const checkinRoutes: FastifyPluginAsync = async (fastify) => {
       // Step 1: Detect face (100-200ms)
       const detection = await faceService.detectFace(buffer);
       
-      // Step 2: Get customers from cache (0-5ms) - KEY OPTIMIZATION!
-      const customers = await cache.get();
+      // Step 2: Get patients from cache (0-5ms) - KEY OPTIMIZATION!
+      const patients = await cache.get();
       
       // Step 3: Match face (50-100ms)
-      const match = await faceService.matchFace(detection.descriptor, customers);
+      const match = await faceService.matchFace(detection.descriptor, patients);
       
       // Return success result
       return {
         success: true,
-        customer: {
-          name: match.customer.name,
+        patient: {
+          PatientName: match.patient.PatientName,
+          PatientId: match.patient.PatientId,
+          SortOrder: match.patient.SortOrder,
           distance : match.distance,
           confidence: 1 - match.distance
         },
@@ -87,14 +89,14 @@ export const checkinRoutes: FastifyPluginAsync = async (fastify) => {
           });
         }
         
-        if (error.message === 'Customer not recognized') {
+        if (error.message === 'Patient not recognized') {
           return reply.code(400).send({
             success: false,
             message: 'Không nhận ra khách hàng! Vui lòng đăng ký trước.'
           });
         }
         
-        if (error.message === 'No customers in database') {
+        if (error.message === 'No patients in database') {
           return reply.code(400).send({
             success: false,
             message: 'Chưa có khách hàng nào trong hệ thống'
@@ -140,13 +142,15 @@ export const checkinRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      const customers = await cache.get();
-      const match = await faceService.matchFace(descriptor, customers);
+      const patients = await cache.get();
+      const match = await faceService.matchFace(descriptor, patients);
 
       return {
         success: true,
-        customer: {
-          name: match.customer.name,
+        patient: {
+          PatientName: match.patient.PatientName,
+          PatientId: match.patient.PatientId,
+          SortOrder: match.patient.SortOrder,
           distance: match.distance,
           confidence: 1 - match.distance
         },
@@ -156,14 +160,14 @@ export const checkinRoutes: FastifyPluginAsync = async (fastify) => {
       fastify.log.error(error);
 
       if (error instanceof Error) {
-        if (error.message === 'Customer not recognized') {
+        if (error.message === 'Patient not recognized') {
           return reply.code(400).send({
             success: false,
             message: 'Không nhận ra khách hàng! Vui lòng đăng ký trước.'
           });
         }
 
-        if (error.message === 'No customers in database') {
+        if (error.message === 'No patients in database') {
           return reply.code(400).send({
             success: false,
             message: 'Chưa có khách hàng nào trong hệ thống'

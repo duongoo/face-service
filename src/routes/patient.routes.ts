@@ -1,9 +1,10 @@
 
 import { FastifyPluginAsync } from 'fastify';
+import { Patient } from '../types';
 import { DatabaseService } from '../services/database.service';
 import { FaceService } from '../services/face.service';
 import { CacheService } from '../services/cache.service';
-import { registerSchema, getCustomersSchema, detectionRegisterSchema } from '../schemas/customer.schema';
+import { registerSchema, detectionRegisterSchema, getPatientsSchema } from '../schemas/patient.schema';
 
 /**
  * Định nghĩa các route liên quan đến khách hàng cho Fastify.
@@ -12,7 +13,7 @@ import { registerSchema, getCustomersSchema, detectionRegisterSchema } from '../
  *
  * Các route bao gồm:
  * - POST `/register`: Đăng ký khách hàng mới bằng cách upload ảnh và tên. Ảnh sẽ được kiểm tra khuôn mặt, lưu descriptor vào database, và làm mới cache.
- * - GET `/customers`: Lấy danh sách tất cả khách hàng từ cache.
+ * - GET `/patients`: Lấy danh sách tất cả khách hàng từ cache.
  *
  * Sử dụng các service:
  * - DatabaseService: Lưu thông tin khách hàng.
@@ -21,14 +22,14 @@ import { registerSchema, getCustomersSchema, detectionRegisterSchema } from '../
  *
  * Schema xác thực:
  * - registerSchema: Xác thực dữ liệu đầu vào cho đăng ký khách hàng.
- * - getCustomersSchema: Xác thực cho lấy danh sách khách hàng.
+ * - getPatientsSchema: Xác thực cho lấy danh sách khách hàng.
  */
-export const customerRoutes: FastifyPluginAsync = async (fastify) => {
+export const patientRoutes: FastifyPluginAsync = async (fastify) => {
   const dbService: DatabaseService = fastify.dbService;
   const faceService: FaceService = fastify.faceService;
   const cache: CacheService = fastify.cache;
   
-  // Register new customer
+  // Register new patient
   fastify.post('/register', {
     schema: registerSchema
   }, async (request, reply) => {
@@ -45,6 +46,7 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
       // Get name from fields
       const fields = data.fields;
       let name = '';
+      let PatientId = '';
       
       if (fields.name) {
         const nameField = fields.name;
@@ -53,9 +55,22 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
       
+      if (fields.PatientId) {
+        const nameField = fields.PatientId;
+        if ('value' in nameField) {
+          PatientId = nameField.value as string;
+        }
+      }
+      
       if (!name) {
         return reply.code(400).send({
           message: 'Thiếu tên khách hàng'
+        });
+      }
+      
+      if (!PatientId) {
+        return reply.code(400).send({
+          message: 'Thiếu PatientId khách hàng'
         });
       }
       
@@ -66,13 +81,13 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
       const detection = await faceService.detectFace(buffer);
       
       // Save to database
-      const customer = await dbService.saveCustomer(name, Array.from(detection.descriptor));
+      const patient = await dbService.savePatient(PatientId, name, Array.from(detection.descriptor));
       // Update cache ngay lập tức
-      cache.addOrUpdateCustomer(customer);
+      cache.addOrUpdatePatient(patient);
 
       return reply.code(201).send({
         message: `Đăng ký thành công cho "${name}" ✓`,
-        customer: name
+        patient: name
       });
       
     } catch (error) {
@@ -109,6 +124,7 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
       // Get name from fields
       const fields = data.fields;
       let name = '';
+      let PatientId = '';
 
       if (fields.name) {
         const nameField = fields.name;
@@ -116,10 +132,23 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
           name = nameField.value as string;
         }
       }
+      
+      if (fields.PatientId) {
+        const nameField = fields.PatientId;
+        if ('value' in nameField) {
+          PatientId = nameField.value as string;
+        }
+      }
 
       if (!name) {
         return reply.code(400).send({
           message: 'Thiếu tên khách hàng'
+        });
+      }
+      
+      if (!PatientId) {
+        return reply.code(400).send({
+          message: 'Thiếu ID khách hàng'
         });
       }
 
@@ -139,12 +168,12 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      const customer = await dbService.saveCustomer(name, Array.from(descriptor));
-      cache.addOrUpdateCustomer(customer);
+      const patient = await dbService.savePatient( PatientId, name, Array.from(descriptor));
+      cache.addOrUpdatePatient(patient);
 
       return reply.code(201).send({
         message: `Đăng ký thành công cho "${name}" ✓`,
-        customer: name
+        patient: name
       });
     } catch (error) {
       fastify.log.error(error);
@@ -156,16 +185,16 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   
-  // Get all customers
-  fastify.get('/customers', {
-    schema: getCustomersSchema
+  // Get all patients
+  fastify.get('/patients', {
+    schema: getPatientsSchema
   }, async (request, reply) => {
     try {
-      const customers = await cache.get();
+      const patients = await cache.get();
       
       return reply.send({
-        customers,
-        total: customers.length
+        patients,
+        total: patients.length
       });
     } catch (error) {
       fastify.log.error(error);
@@ -175,8 +204,23 @@ export const customerRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+  // API thêm/cập nhật patient vào cache trực tiếp
+  fastify.post('/patients/add-to-cache', async (request, reply) => {
+    try {
+      const patient = request.body as Patient;
+      if (!patient || !patient.PatientId) {
+        return reply.code(400).send({ message: 'Patient data invalid' });
+      }
+      cache.addOrUpdatePatient(patient);
+      return reply.send({ message: 'Đã thêm/cập nhật Patient vào cache thành công' });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ message: 'Lỗi server khi thêm Patient vào cache' });
+    }
+  });
+
   // API cập nhật lại cache khách hàng thủ công
-  fastify.post('/customers/refresh-cache', async (request, reply) => {
+  fastify.post('/patients/refresh-cache', async (request, reply) => {
     try {
       await cache.refresh();
       return reply.send({
