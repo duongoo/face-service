@@ -1,21 +1,23 @@
 export const checkinSchema = {
+  description: 'Check-in khách hàng bằng ảnh. Gửi ảnh qua multipart/form-data; server phát hiện khuôn mặt, so khớp với dữ liệu trong cache và trả về thông tin kết quả.',
   consumes: ['multipart/form-data'],
   response: {
     200: {
       type: 'object',
       properties: {
-        success: { type: 'boolean' },
+        success: { type: 'boolean', description: 'Trạng thái thành công của thao tác' },
         patient: {
           type: 'object',
+          description: 'Thông tin patient được nhận dạng',
           properties: {
-            PatientName: { type: 'string' },
-            PatientId: { type: 'string' },
-            SortOrder: { type: 'number' },
-            distance: { type: 'number' },
-            confidence: { type: 'number' }
+            PatientName: { type: 'string', description: 'Tên khách hàng' },
+            PatientId: { type: 'string', description: 'Mã định danh khách hàng' },
+            SortOrder: { type: 'number', description: 'Thứ tự sắp xếp (nếu có)' },
+            distance: { type: 'number', description: 'Khoảng cách (distance) giữa descriptor' },
+            confidence: { type: 'number', description: 'Độ tin cậy ước tính (1 - distance)' }
           }
         },
-        message: { type: 'string' }
+        message: { type: 'string', description: 'Thông báo trạng thái' }
       }
     },
     400: {
@@ -39,10 +41,11 @@ export const checkinSchema = {
  * Expect multipart/form-data with file field 'descriptor' containing Float32 binary
  */
 export const detectionCheckinSchema = {
+  description: 'Check-in bằng descriptor (file nhị phân Float32). Gửi descriptor dưới dạng multipart/form-data với field `descriptor`.',
   consumes: ['multipart/form-data'],
   body: {
     properties: {
-      confidence: { type: 'number' }
+      confidence: { type: 'number', description: 'Ngưỡng confidence mong muốn (tuỳ chọn)' }
     }
   },
   response: checkinSchema.response

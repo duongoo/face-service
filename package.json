@@ -21,6 +21,8 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/formbody": "^8.0.2",
     "@fastify/multipart": "^9.3.0",
+    "@fastify/swagger": "^9.6.1",
+    "@fastify/swagger-ui": "^5.2.3",
     "canvas": "^3.2.0",
     "dotenv": "^17.2.3",
     "face-api.js": "^0.22.2",

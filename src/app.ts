@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import formbody from '@fastify/formbody';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config';
 import { DatabaseService } from './services/database.service';
 import { FaceService } from './services/face.service';
@@ -52,6 +54,28 @@ export async function buildApp() {
 
   // Parse x-www-form-urlencoded bodies
   await fastify.register(formbody);
+
+  // Swagger / OpenAPI (Tiếng Việt)
+  // Cast to any to avoid strict typing issues with @fastify/swagger types
+  await fastify.register(swagger as any, {
+    openapi: {
+      info: {
+        title: 'API Nhận dạng khuôn mặt',
+        description: 'Dịch vụ API nhận dạng khuôn mặt — quản lý đăng ký, cache và check-in',
+        version: '2.0.0'
+      }
+    },
+    exposeRoute: true
+  } as any);
+
+  await fastify.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: false
+    },
+    staticCSP: true
+  });
   
   // Initialize services
   console.log('\n🔧 Initializing services...\n');

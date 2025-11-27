@@ -4,7 +4,7 @@ import { Patient } from '../types';
 import { DatabaseService } from '../services/database.service';
 import { FaceService } from '../services/face.service';
 import { CacheService } from '../services/cache.service';
-import { registerSchema, detectionRegisterSchema, getPatientsSchema } from '../schemas/patient.schema';
+import { registerSchema, detectionRegisterSchema, getPatientsSchema, addToCacheSchema } from '../schemas/patient.schema';
 
 /**
  * Định nghĩa các route liên quan đến khách hàng cho Fastify.
@@ -205,13 +205,27 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
   // API thêm/cập nhật patient vào cache trực tiếp
-  fastify.post('/patients/add-to-cache', async (request, reply) => {
+  fastify.post('/patients/add-to-cache', { schema: addToCacheSchema }, async (request, reply) => {
     try {
-      const patient = request.body as Patient;
+      const patient = request.body as any;
       if (!patient || !patient.PatientId) {
         return reply.code(400).send({ message: 'Patient data invalid' });
       }
-      cache.addOrUpdatePatient(patient);
+
+      // Normalize descriptor field name if client used different casing
+      const descriptor = Array.isArray(patient.Descriptor)
+        ? patient.Descriptor
+        : Array.isArray(patient.descriptor)
+        ? patient.descriptor
+        : [];
+
+      const normalizedPatient: Patient = {
+        PatientId: String(patient.PatientId),
+        PatientName: patient.PatientName || patient.Name || '',
+        Descriptor: descriptor
+      } as unknown as Patient;
+
+      cache.addOrUpdatePatient(normalizedPatient);
       return reply.send({ message: 'Đã thêm/cập nhật Patient vào cache thành công' });
     } catch (error) {
       fastify.log.error(error);
@@ -220,7 +234,25 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // API cập nhật lại cache khách hàng thủ công
-  fastify.post('/patients/refresh-cache', async (request, reply) => {
+  fastify.post('/patients/refresh-cache', { 
+    schema: {
+      description: 'Làm mới toàn bộ cache patient từ database.',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', description: 'Thông báo kết quả' }
+          }
+        },
+        500: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', description: 'Lỗi server' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     try {
       await cache.refresh();
       return reply.send({
