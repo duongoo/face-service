@@ -3,9 +3,9 @@ export const checkinSchema = {
   consumes: ['multipart/form-data'],
   response: {
     200: {
-      type: 'object',
       properties: {
         success: { type: 'boolean', description: 'Trạng thái thành công của thao tác' },
+        isOk: { type: 'boolean' },
         patient: {
           type: 'object',
           description: 'Thông tin patient được nhận dạng',

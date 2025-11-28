@@ -10,3 +10,5 @@ avatart/
 
 # Ignore models folder
 storage/models/
+
+dist/

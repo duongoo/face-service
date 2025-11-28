@@ -147,6 +147,7 @@ export const checkinRoutes: FastifyPluginAsync = async (fastify) => {
 
       return {
         success: true,
+        isOk:true,
         patient: {
           PatientName: match.patient.PatientName,
           PatientId: match.patient.PatientId,

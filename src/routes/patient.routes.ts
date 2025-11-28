@@ -84,6 +84,16 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
       const patient = await dbService.savePatient(PatientId, name, Array.from(detection.descriptor));
       // Update cache ngay lập tức
       cache.addOrUpdatePatient(patient);
+      // Cập nhật vector index incremental (nếu đang bật)
+      try {
+        if (faceService.isVectorIndexEnabled() && patient.Descriptor && patient.Descriptor.length > 0) {
+          for (const desc of patient.Descriptor) {
+            faceService.addDescriptorToIndex(patient.PatientId, desc);
+          }
+        }
+      } catch (e) {
+        fastify.log.warn('Vector index update failed for PatientId=' + patient.PatientId + ': ' + (e instanceof Error ? e.message : String(e)));
+      }
 
       return reply.code(201).send({
         message: `Đăng ký thành công cho "${name}" ✓`,
@@ -170,6 +180,16 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
 
       const patient = await dbService.savePatient( PatientId, name, Array.from(descriptor));
       cache.addOrUpdatePatient(patient);
+      // Cập nhật vector index incremental (nếu đang bật)
+      try {
+        if (faceService.isVectorIndexEnabled() && patient.Descriptor && patient.Descriptor.length > 0) {
+          for (const desc of patient.Descriptor) {
+            faceService.addDescriptorToIndex(patient.PatientId, desc);
+          }
+        }
+      } catch (e) {
+        fastify.log.warn('Vector index update failed for PatientId=' + patient.PatientId + ': ' + (e instanceof Error ? e.message : String(e)));
+      }
 
       return reply.code(201).send({
         message: `Đăng ký thành công cho "${name}" ✓`,
@@ -204,7 +224,7 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
-  // API thêm/cập nhật patient vào cache trực tiếp
+  // API thêm/cập nhật patient vào cache trực tiếp — có thể chọn lưu thêm vào DB nếu client gửi `saveToDb: true`
   fastify.post('/patients/add-to-cache', { schema: addToCacheSchema }, async (request, reply) => {
     try {
       const patient = request.body as any;
@@ -213,20 +233,100 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Normalize descriptor field name if client used different casing
-      const descriptor = Array.isArray(patient.Descriptor)
-        ? patient.Descriptor
-        : Array.isArray(patient.descriptor)
-        ? patient.descriptor
-        : [];
+      // and accept Descriptor sent as a JSON string (from some clients)
+      const rawDescriptor = patient.Descriptor ?? patient.descriptor;
+      let normalizedDescriptor: number[][] = [];
+
+      if (typeof rawDescriptor === 'string') {
+        try {
+          const parsed = JSON.parse(rawDescriptor);
+          if (Array.isArray(parsed)) {
+            // parsed may be number[] (single descriptor) or number[][]
+            if (parsed.length === 0) {
+              normalizedDescriptor = [];
+            } else if (typeof parsed[0] === 'number') {
+              normalizedDescriptor = [parsed as number[]];
+            } else if (Array.isArray(parsed[0])) {
+              normalizedDescriptor = parsed as number[][];
+            }
+          }
+        } catch (e) {
+          fastify.log.warn('Invalid JSON descriptor string received for PatientId=' + String(patient.PatientId));
+          normalizedDescriptor = [];
+        }
+      } else if (Array.isArray(rawDescriptor)) {
+        // rawDescriptor might be number[] or number[][]
+        if (rawDescriptor.length === 0) {
+          normalizedDescriptor = [];
+        } else if (typeof rawDescriptor[0] === 'number') {
+          normalizedDescriptor = [rawDescriptor as number[]];
+        } else if (Array.isArray(rawDescriptor[0])) {
+          normalizedDescriptor = rawDescriptor as number[][];
+        }
+      }
 
       const normalizedPatient: Patient = {
         PatientId: String(patient.PatientId),
         PatientName: patient.PatientName || patient.Name || '',
-        Descriptor: descriptor
+        Descriptor: normalizedDescriptor
       } as unknown as Patient;
 
-      cache.addOrUpdatePatient(normalizedPatient);
-      return reply.send({ message: 'Đã thêm/cập nhật Patient vào cache thành công' });
+      const saveToDb = Boolean(patient.saveToDb);
+
+      if (saveToDb) {
+        // Lưu vào database trước, dùng kết quả trả về để cập nhật cache (đảm bảo thông tin nhất quán)
+        try {
+          // Chuẩn hoá descriptor cho dbService.savePatient (expects number[])
+          let descriptorForDb: number[] = [];
+          const desc = normalizedPatient.Descriptor as any;
+          if (Array.isArray(desc)) {
+            if (desc.length === 0) {
+              descriptorForDb = [];
+            } else if (typeof desc[0] === 'number') {
+              // desc is number[]
+              descriptorForDb = desc as number[];
+            } else if (Array.isArray(desc[0])) {
+              // desc is number[][]
+              const arr2 = desc as number[][];
+              descriptorForDb = arr2[arr2.length - 1] || [];
+            }
+          }
+
+          const saved = await dbService.savePatient(
+            normalizedPatient.PatientId,
+            normalizedPatient.PatientName,
+            descriptorForDb
+          );
+          cache.addOrUpdatePatient(saved);
+          // Cập nhật vector index incremental (nếu bật)
+          try {
+            if (faceService.isVectorIndexEnabled() && saved.Descriptor && saved.Descriptor.length > 0) {
+              for (const desc of saved.Descriptor) {
+                faceService.addDescriptorToIndex(saved.PatientId, desc);
+              }
+            }
+          } catch (e) {
+            fastify.log.warn('Vector index update failed for PatientId=' + saved.PatientId + ': ' + (e instanceof Error ? e.message : String(e)));
+          }
+          return reply.send({ isOk:true, success:true, message: 'Đã thêm/cập nhật Patient vào cache và database thành công' });
+        } catch (dbError) {
+          fastify.log.error(dbError);
+          return reply.code(500).send({ isOk:false, success:false,message: 'Lỗi server khi lưu Patient vào database' });
+        }
+      } else {
+        cache.addOrUpdatePatient(normalizedPatient);
+        // Cập nhật vector index incremental (nếu bật và có descriptor)
+        try {
+          if (faceService.isVectorIndexEnabled() && normalizedPatient.Descriptor && normalizedPatient.Descriptor.length > 0) {
+            for (const desc of normalizedPatient.Descriptor) {
+              faceService.addDescriptorToIndex(normalizedPatient.PatientId, desc);
+            }
+          }
+        } catch (e) {
+          fastify.log.warn('Vector index update failed for PatientId=' + normalizedPatient.PatientId + ': ' + (e instanceof Error ? e.message : String(e)));
+        }
+        return reply.send({ isOk:true, success:true, message: 'Đã thêm/cập nhật Patient vào cache thành công' });
+      }
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ message: 'Lỗi server khi thêm Patient vào cache' });
@@ -241,7 +341,9 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
         200: {
           type: 'object',
           properties: {
-            message: { type: 'string', description: 'Thông báo kết quả' }
+            message: { type: 'string', description: 'Thông báo kết quả' },
+            isOk: { type: 'boolean' },
+            success: { type: 'boolean' }
           }
         },
         500: {
@@ -256,11 +358,13 @@ export const patientRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       await cache.refresh();
       return reply.send({
+        isOk:true, success:true,
         message: 'Đã làm mới cache khách hàng thành công'
       });
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({
+        isOk:false, success:false,
         message: 'Lỗi server khi làm mới cache khách hàng'
       });
     }

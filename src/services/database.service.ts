@@ -118,9 +118,9 @@ export class DatabaseService {
     
     let descriptors: number[][] = [];
     
-    if (existing.recordset.length > 0) {
-      descriptors = this.parseDescriptors(existing.recordset[0].descriptor);
-    }
+    // if (existing.recordset.length > 0) {
+    //   descriptors = this.parseDescriptors(existing.recordset[0].descriptor);
+    // }
     
     // Add new descriptor and keep only last 5
     descriptors.push(Descriptor);

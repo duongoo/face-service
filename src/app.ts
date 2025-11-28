@@ -8,9 +8,11 @@ import { config } from './config';
 import { DatabaseService } from './services/database.service';
 import { FaceService } from './services/face.service';
 import { CacheService } from './services/cache.service';
+import { VectorIndexService } from './services/vector-index.service';
 import { healthRoutes } from './routes/health.routes';
 import { patientRoutes } from './routes/patient.routes';
 import { checkinRoutes } from './routes/checkin.routes';
+import * as fs from 'fs';
 
 export async function buildApp() {
   // Create Fastify instance
@@ -83,11 +85,46 @@ export async function buildApp() {
   const dbService = new DatabaseService();
   await dbService.connect();
   
-  const faceService = new FaceService();
+  const vectorIndex = new VectorIndexService();
+  const faceService = new FaceService(vectorIndex);
   await faceService.loadModels();
   
   const cache = new CacheService(dbService);
   await cache.refresh(); // Pre-load cache (tải dữ liệu ngay khi khởi động)
+  
+  // Build vector index nếu có nhiều bệnh nhân
+  const patients = await cache.get();
+  const patientCount = patients.length;
+  
+  console.log(`\n📊 Số lượng bệnh nhân: ${patientCount.toLocaleString()}`);
+  
+  // Tự động bật vector index nếu có >=10k bệnh nhân
+  if (patientCount >= 10000) {
+    console.log('🚀 Building vector index (recommended for large datasets, may take time)...');
+    
+    const indexPath = './storage/face-index.bin';
+    
+    // Thử load index từ file trước
+    if (fs.existsSync(indexPath)) {
+      try {
+        await vectorIndex.loadIndex(indexPath, patients);
+        console.log('✅ Đã load vector index từ file');
+      } catch (error) {
+        console.warn('⚠️  Không thể load index, sẽ build mới:', error);
+        await faceService.buildVectorIndex(patients);
+        vectorIndex.saveIndex(indexPath);
+      }
+    } else {
+      await faceService.buildVectorIndex(patients);
+      vectorIndex.saveIndex(indexPath);
+      console.log(`✅ Đã lưu vector index vào ${indexPath}`);
+    }
+    
+    faceService.setVectorIndexEnabled(true);
+    console.log('✅ Vector index ENABLED - Tăng tốc ~1000x');
+  } else {
+    console.log('ℹ️  Brute-force mode (số lượng nhỏ, dùng brute-force cho đơn giản và chính xác)');
+  }
   
   console.log('\n✓ Tất cả các dịch vụ được khởi tạo\n');
   
