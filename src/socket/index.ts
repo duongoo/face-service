@@ -80,6 +80,41 @@ export function initSocket(server: http.Server) {
       socket.to(counterId).emit('res-stop-stream');
     });
 
+    /**
+     * WebRTC signaling
+     * - Clients gửi offer/answer/candidate kèm counterId để server broadcast tới room cùng counter
+     * - Server chỉ trung chuyển signaling; media đi P2P giữa clients
+     */
+
+    socket.on('webrtc-offer', (data: { counterId: string; sdp: any }) => {
+      if (!data || !data.counterId) return;
+      // Gửi offer tới các client trong room (trừ người gửi)
+      socket.to(data.counterId).emit('webrtc-offer', { from: socket.id, sdp: data.sdp });
+      console.log(`[socket] ${socket.id} -> webrtc-offer to room ${data.counterId}`);
+    });
+
+    socket.on('webrtc-answer', (data: { counterId: string; sdp: any; toSocketId?: string }) => {
+      if (!data || !data.counterId) return;
+      // Nếu toSocketId được cung cấp, gửi trực tiếp tới socket id đó (tiện khi dùng routing)
+      if (data.toSocketId && typeof data.toSocketId === 'string') {
+        io.to(data.toSocketId).emit('webrtc-answer', { from: socket.id, sdp: data.sdp });
+        console.log(`[socket] ${socket.id} -> webrtc-answer to ${data.toSocketId}`);
+      } else {
+        socket.to(data.counterId).emit('webrtc-answer', { from: socket.id, sdp: data.sdp });
+        console.log(`[socket] ${socket.id} -> webrtc-answer to room ${data.counterId}`);
+      }
+    });
+
+    socket.on('webrtc-candidate', (data: { counterId: string; candidate: any; toSocketId?: string }) => {
+      if (!data || !data.counterId) return;
+      if (data.toSocketId && typeof data.toSocketId === 'string') {
+        io.to(data.toSocketId).emit('webrtc-candidate', { from: socket.id, candidate: data.candidate });
+      } else {
+        socket.to(data.counterId).emit('webrtc-candidate', { from: socket.id, candidate: data.candidate });
+      }
+      // do not log candidate content to avoid noise
+    });
+
     socket.on('disconnect', (reason: string) => {
       console.log(`[socket] disconnected: ${socket.id} (${reason})`);
     });
